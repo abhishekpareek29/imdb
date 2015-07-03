@@ -1,0 +1,21 @@
+<?php
+
+
+
+
+// function sos_form_alter(&$form, $form_state, $form_id) {
+//     dpm($form_id);
+//     $form_state['input']['pass'] = 'abhishek';
+//     dpm($form_state['input']['pass']);
+
+// }
+
+// function sos_node_update($node) {
+//      // Provides the "updated" values
+//      dpm($node);
+//      $loaded_node = node_load($node->nid);
+//      // Provides the old values, which shouldn't be there according
+//      // to the documentation above
+//      dpm($loaded_node);
+// }
+?>

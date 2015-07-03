@@ -1,0 +1,303 @@
+<?php
+/*
+ * @file
+ * Shows content and exposed filter
+ * along with url filter, to filter
+ * out movies by movie name and actor
+ * name
+ */
+
+
+/*
+ * Implementation of hook_menu()
+ */
+function fetch_movie_menu() {
+/* path location (<a href="http://www.url.com/examplepage"
+ * title="http://www.url.com/fetch_movie">http://www.url.com/foo/bar</a> )
+ */
+  $items['fetch_movie'] = array(
+    // page title
+    'title' => 'New Movies Page',
+    'type' => MENU_NORMAL_ITEM,
+    // describe the page for the menu system.  site visitors will not see this
+    'description' => 'Simple custom hook_menu() implementation.',
+
+    // function that is called when visiting the new path
+    'page callback' => 'main_table',
+    // permissions required to view page
+    'access arguments' => array('access content'),
+    // 'page arguments' => array('drupalform_form1'),
+    );
+  return $items;
+}
+
+function drupalform_form1($form, &$form_state) {
+  $form = array();
+
+  $form['pass']=array(
+    '#type'        => 'textfield',
+    '#title'       => t('Filter Out Your Movie by Actors'),
+    '#description' => t('Enter any Actor/Actress name')
+    );
+  $form['genre']=array(
+    '#type'        => 'textfield',
+    '#title'       => t('Filter Out Your Movie by Genre'),
+    '#description' => t('Enter any Genre (Comedy/Action/Romantic)')
+  );
+
+  $form['submit']=array(
+    '#type'  => 'submit',
+    '#value' => t('Get Movie')
+    );
+  return $form;
+}
+
+function drupalform_form1_submit($form, &$form_state) {
+ $form_state['rebuild'] = TRUE;
+ drupal_set_message(t('Form has been submitted'));
+
+ // dpm($form_state;
+}
+
+/**
+ * Function main_table().
+ */
+
+function main_table($filter = NULL) {
+
+  $output_to_be_returned1 = drupal_get_form('drupalform_form1');
+  // dpm($output_to_be_returned1);
+  $exposed_filter33333 = $output_to_be_returned1['pass']['#value'];
+  $genre = $output_to_be_returned1['genre']['#value'];
+  // dpm($exposed_filter33333);
+  $query = new EntityFieldQuery();
+
+  $query->entityCondition('entity_type', 'node')
+        ->entityCondition('bundle', 'movie');
+
+  $result = $query->execute();
+  // dpm($result);
+
+/**************************************/
+$block = module_invoke('recent_movies', 'block_view', 'recentfive');
+print render($block['content']);
+/*************************************/
+
+  $nids = array_keys($result['node']);
+$rows = NULL;
+  foreach ($nids as $key => $nid) {
+// dpm($key);
+// Load the nodes of type movie
+    $nodes = node_load($nid);
+    // dpm($nodes);
+
+// Casting node extraction
+    $target_id = $nodes->field_casting['und'][0]['target_id'];
+    // dpm($target_id);
+    $node_casting = node_load($target_id);
+    // dpm($node_casting);
+
+// Genre Name extraction
+    $genre_id_movie = $nodes->field_genre['und'][0]['tid'];
+    // dpm($genre_id_movie);
+    $genre_movie    = taxonomy_term_load($genre_id_movie);
+    // dpm($genre_movie);
+    $genre_name     = $genre_movie->name;
+    // dpm($genre_name);
+
+// Image extraction
+    $fid          = $nodes->field_poster['und'][0]['fid'];
+    $poster       = file_load($fid);
+    // dpm($poster);
+    $poster_image = $poster->uri;
+    // dpm($poster_image);
+    $image_path   = file_create_url($poster_image);
+    // dpm($image_path);
+    $variable = array(
+      'path'       => $image_path,
+      'alt'        => 'Movie Poster',
+      'title'      => 'Image',
+      'width'      => '50%',
+      'height'     => '50%',
+      'attributes' => array('class' => 'some-img', 'id' => 'my-img'),
+      );
+
+    $image = theme_image($variable);
+    $title = $nodes->title;
+    $actor = $node_casting->title;
+
+    // dpm($filter);
+// dpm('---------end of line-----------');
+if (!empty($filter) && strtolower($filter) == strtolower($title)) {
+
+  $rows = show_output($title, $actor, $nid, $image, $target_id,
+    $genre_name);
+  $header = array('Movie', 'Poster', 'Casting', 'Genre');
+  return theme('table', array('header' => $header,
+                              'rows'   => $rows)
+  );
+}
+
+
+if (!empty($exposed_filter33333) && !empty($genre)) {
+// dpm($exposed_filter33333);
+// dpm($genre);
+    if (strtolower($genre) == strtolower($genre_name) &&
+        strtolower($exposed_filter33333) == strtolower($actor)) {
+    // dpm('true 1');
+        // $row[] = show_output($title, $actor, $nid, $image, $target_id, $genre_name);
+    // First row
+      $rows[] = array(
+    // first cell
+        array('data' => array('#type' => 'link', '#title' => $title, '#href' =>
+           'http://imdb.com/?q=node/' . $nid)),
+    // second cell
+        array('data' => $image ),
+    // third cell
+        array('data' => array('#type'  => 'link',
+                              '#title' => $actor,
+                              '#href'  => 'http://imdb.com/?q=node/' . $target_id)
+              ),
+    // 4th cell
+        array('data' => $genre_name)
+        );
+    }
+}
+
+elseif (!empty($exposed_filter33333) && empty($genre)) {
+    if (strtolower($exposed_filter33333) == strtolower($actor)) {
+     // $rows = show_output($title, $actor, $nid, $image, $target_id, $genre_name);
+     // First row
+      $rows[] = array(
+        // 1st cell
+        array('data' => array('#type'  => 'link',
+                              '#title' => $title,
+                              '#href'  =>  'http://imdb.com/?q=node/' . $nid)
+              ),
+        // 2nd cell
+        array('data' => $image ),
+        // 3rd cell
+        array('data' => array('#type'  => 'link',
+                              '#title' => $actor,
+                              '#href'  => 'http://imdb.com/?q=node/' . $target_id)
+              ),
+        // 4th cell
+        array('data' => $genre_name)
+        );
+    }
+}
+
+elseif (empty($exposed_filter33333) && !empty($genre)) {
+// dpm($genre_name);
+// dpm($genre);
+    if (strtolower($genre) == strtolower($genre_name)) {
+//        $rows[] = show_output($title, $actor, $nid, $image, $target_id, $genre_name);
+    // First row
+      $rows[] = array(
+        // 1st cell
+        array('data' => array('#type'  => 'link',
+                              '#title' => $title,
+                              '#href'  => 'http://imdb.com/?q=node/' . $nid)
+              ),
+        // 2nd cell
+        array('data' => $image ),
+        // 3rd cell
+        array('data' => array('#type'  => 'link',
+                              '#title' => $actor,
+                              '#href'  => 'http://imdb.com/?q=node/' . $target_id)
+              ),
+        // 4th cell
+        array('data' => $genre_name)
+        );
+    }
+}
+
+
+elseif (empty($exposed_filter33333 && empty($genre))) {
+  //    $rows = show_output($title, $actor, $nid, $image, $target_id, $genre_name);
+      // First row
+      $rows[] = array(
+        // 1st cell
+        array('data' => array('#type'  => 'link',
+                              '#title' => $title,
+                              '#href'  => 'http://imdb.com/?q=node/' . $nid)
+              ),
+        // 2nd cell
+        array('data' => $image ),
+        // 3rd cell
+        array('data' => array('#type'  => 'link',
+                              '#title' => $actor,
+                              '#href'  => 'http://imdb.com/?q=node/' . $target_id)
+              ),
+        // 4th cell
+        array('data' => $genre_name)
+        );
+    }
+  }
+  if ($rows == NULL) {
+        $header = array('Movie', 'Poster', 'Casting', 'Genre');
+        $error_msg = t('Your Query Does Not Match Any Data');
+        $blank = t('');
+        // First row
+        $rows[] = array(
+        // 1st cell
+        array('data' => $error_msg),
+        // 2nd cell
+        array('data' => $blank),
+        // 3rd cell
+        array('data' => $blank),
+        // 4th cell
+        array('data' => $blank)
+        );
+  }
+
+    // Creating value that contains array
+  $header = array('Movie', 'Poster', 'Casting', 'Genre');
+  $output_to_be_returned  = drupal_render($output_to_be_returned1);
+  $output_to_be_returned .= theme('table', array('header' => $header,
+                                                 'rows'   => $rows)
+                                  );
+      // dpm('I am Here last');
+  return $output_to_be_returned;
+}
+
+
+// Array formation
+function show_output($title, $actor, $nid, $image, $target_id, $genre_name) {
+
+  // Creating only single row
+  $rows[] = array(
+    // first cell
+    array('data' => array('#type'  => 'link',
+                          '#title' => $title,
+                          '#href'  => 'http://imdb.com/?q=node/' . $nid)
+    ),
+    // second cell
+    array('data' => $image ),
+    // third cell
+    array('data' => array('#type'  => 'link',
+                          '#title' => $actor,
+                          '#href'  => 'http://imdb.com/?q=node/' . $target_id)
+    ),
+    // 4th cell
+    array('data' => $genre_name)
+    );
+  // dpm($rows);
+  return $rows;
+
+}
+
+
+/*
+ * Implements hook_help().
+ */
+function fetch_movie_help($path, $arg) {
+
+  if ($path == 'admin/help#fetch_movie') {
+    $output  = '<h3>' . t('About') . '</h3>';
+    $output .= '<p>' . t('The fetch_movie module shows different movies
+      content type using Drupal.') . '</p>';
+    return $output;
+  }
+}
+

@@ -1,0 +1,167 @@
+<?php
+
+/*
+ * Implementation of hook_menu()
+ */
+function recent_movies_menu() {
+/* path location (<a href="http://www.url.com/examplepage"
+ * title="http://www.url.com/recent_movies">http://www.url.com/foo/bar</a> )
+ */
+  $items['recent_movies'] = array(
+    // page title
+    'title' => 'Recent Movies Page',
+    // 'type' => MENU_NORMAL_ITEM,
+    // describe the page for the menu system.  site visitors will not see this
+    'description' => 'Simple custom hook_menu() implementation.',
+
+    // function that is called when visiting the new path
+    'page callback' => 'test',
+    'access callback' => TRUE,
+    'access arguments' => array('access content'),
+    // 'page arguments' => array('drupalform_form1'),
+    );
+  return $items;
+}
+
+// function recent_movies_page() {
+//   $page = array(
+//     '#type' => 'markup',
+//     '#markup' => t('The Block recent_movies shows the recent five movies <a href="@url">the block admin page</a>.', array('@url' => url('admin/structure/block'))),
+//   );
+//   return $page;
+// }
+
+
+/**
+ * Implements recent_movies_block_info().
+ */
+function recent_movies_block_info() {
+  $blocks['recentfive'] = array(
+    'info' => t('Recent Five Movies'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  return $blocks;
+
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function recent_movies_block_view($delta = '') {
+  switch ($delta) {
+    case 'recentfive':
+      $block['subject'] = t('Recent Five Movie Content');
+      $block['content'] = recentfive_content();
+    break;
+  }
+  return $block;
+}
+
+/**
+ * Implementation of EntityFieldQuery function
+ */
+
+function recentfive_content() {
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', 'movie')
+    ->propertyOrderBy('created', $direction = 'DESC')
+    ->range(0, 2);
+  $result = $query->execute();
+  $nids = array_keys($result['node']);
+  // dpm($nids);
+  foreach ($nids as $key => $nid) {
+    $nodes = node_load($nid);
+    // dpm($nodes);
+    // dpm($nodes->created);
+    // Casting node extraction
+    $target_id = $nodes->field_casting['und'][0]['target_id'];
+    // dpm($target_id);
+    $node_casting = node_load($target_id);
+    // dpm($node_casting);
+
+    // Genre Name extraction
+    $genre_id_movie = $nodes->field_genre['und'][0]['tid'];
+    // dpm($genre_id_movie);
+    $genre_movie    = taxonomy_term_load($genre_id_movie);
+    // dpm($genre_movie);
+    $genre_name     = $genre_movie->name;
+    // dpm($genre_name);
+
+    // Image extraction
+    $fid          = $nodes->field_poster['und'][0]['fid'];
+    $poster       = file_load($fid);
+    // dpm($poster);
+    $poster_image = $poster->uri;
+    // dpm($poster_image);
+    $image_path   = file_create_url($poster_image);
+    // dpm($image_path);
+    $variable = array(
+      'path'       => $image_path,
+      'alt'        => 'Movie Poster',
+      'title'      => 'Image',
+      'width'      => '50%',
+      'height'     => '50%',
+      'attributes' => array('class' => 'some-img', 'id' => 'my-img'),
+      );
+
+    $image = theme_image($variable);
+    $title = $nodes->title;
+    $actor = $node_casting->title;
+
+
+    // Creating only single row
+    $rows[] = array(
+    // first cell
+    array('data' => array('#type'  => 'link',
+                          '#title' => $title,
+                          '#href'  => 'http://imdb.com/?q=node/' . $nid)
+    ),
+    // second cell
+    array('data' => $image),
+    // third cell
+    array('data' => array('#type'  => 'link',
+                          '#title' => $actor,
+                          '#href'  => 'http://imdb.com/?q=node/' . $target_id)
+    ),
+    // 4th cell
+    array('data' => $genre_name)
+    );
+
+    // $rows = show_movies($title, $actor, $nid, $image, $target_id, $genre_name);
+    $header = array('Movie', 'Poster', 'Casting', 'Genre');
+
+  }
+  return theme('table', array('header' => $header, 'rows' => $rows));
+  // return 'gogogogo';
+}
+
+function test() {
+return '';
+}
+
+
+// Array formation
+function show_movies($title, $actor, $nid, $image, $target_id, $genre_name) {
+
+  // Creating only single row
+  $rows[] = array(
+    // first cell
+    array('data' => array('#type'  => 'link',
+                          '#title' => $title,
+                          '#href'  => 'http://imdb.com/?q=node/' . $nid)
+    ),
+    // second cell
+    array('data' => $image ),
+    // third cell
+    array('data' => array('#type'  => 'link',
+                          '#title' => $actor,
+                          '#href'  => 'http://imdb.com/?q=node/' . $target_id)
+    ),
+    // 4th cell
+    array('data' => $genre_name)
+    );
+  // dpm($rows);
+  return $rows;
+
+}
